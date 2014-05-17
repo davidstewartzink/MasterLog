@@ -6,8 +6,9 @@
 namespace MasterLog {
 namespace Connector {
 
-struct Config
+struct Config : ConfigVar::Array
 {
+    Config();
 };
 
 }} // Connector : MasterLog

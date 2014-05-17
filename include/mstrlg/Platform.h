@@ -3,4 +3,5 @@
 
 // Includes that provide a consistent platform for our code.
 
+#include <stdio.h>
 #include <stdint.h>

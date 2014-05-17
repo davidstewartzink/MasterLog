@@ -9,16 +9,16 @@ namespace ConfigVar {
 namespace Type {
     // c++2011 fixes this...
     enum Instance {
-        FORBIDDEN,
-        INTEGER,
-        STRING,
-        ARRAY,
-        MAP,
-        PATH,
-        DATE,
+        FORBIDDEN = 0,
+        INTEGER = 1 << 0,
+        STRING = 1 << 1,
+        ARRAY = 1 << 2,
+        MAP = 1 << 3,
+        PATH = 1 << 4,
+        DATE = 1 << 5,
     };
 
-//    typedef unsigned Combining;
+    typedef unsigned Combining;
 }
 
 struct I
@@ -59,15 +59,16 @@ struct Date : I
 
 struct Array : I
 {
-    Array(const char *nm, const char* v);
-    const char * value;
+    Array(const char *nm, Type::Combining allowed, I* first, ...);
+    I ** values;
+    unsigned count;
 };
 
 struct Map : I
 {
-    Map(const char *nm, const char* v);
-    const char * value;
+    Map(const char *nm, I* first, ...);
+    I ** values;
+    unsigned count;
 };
-
 
 }} // ConfigVar : MasterLog

@@ -6,8 +6,9 @@
 namespace MasterLog {
 namespace Identification {
 
-struct Config
+struct Config : ConfigVar::Map
 {
+    Config();
 };
 
 }} // Identification : MasterLog

@@ -1,6 +1,7 @@
 PKGNAME=mstrlg
 
 LIBRARIES=\
+	todo \
 	config \
 	logging \
 	jsonparse \

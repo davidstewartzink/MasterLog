@@ -17,4 +17,12 @@ Path::Path(const char *nm, const char* v):I(nm,Type::PATH),value(v){}
 
 Date::Date(const char *nm, const char* v):I(nm,Type::DATE),value(v){}
 
+Array::Array(const char *nm, Type::Combining allowed, I* first, ...):I(nm,Type::ARRAY)
+{
+}
+
+Map::Map(const char *nm, I* first, ...):I(nm,Type::MAP)
+{
+}
+
 }} // ConfigVar : MasterLog

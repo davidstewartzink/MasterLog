@@ -6,8 +6,9 @@
 namespace MasterLog {
 namespace DiskLog {
 
-struct Config
+struct Config : ConfigVar::Map
 {
+    Config();
 };
 
 }} // DiskLog : MasterLog

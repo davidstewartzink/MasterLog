@@ -4,12 +4,17 @@
 // Help and related services
 
 #include <mstrlg/Platform.h>
+#include <mstrlg/ConfigVar.h>
 #include <mstrlg/Help.h>
 
 namespace MasterLog {
 namespace Help {
 
 static const char *exeName = "masterlog";
+
+Config::Config():Map("help", NULL)
+{
+}
 
 int initialize(int argc, char **argv)
 {

@@ -6,7 +6,9 @@
 namespace MasterLog {
 namespace Help {
 
-struct Config {
+struct Config : ConfigVar::Map
+{
+    Config();
 };
 
 int initialize(int argc, char **argv);

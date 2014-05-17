@@ -1,5 +1,6 @@
 #include <mstrlg/Platform.h>
 #include <mstrlg/ConfigVar.h>
+#include <mstrlg/Logging.h>
 #include <mstrlg/JSONParse.h>
 #include <mstrlg/Identification.h>
 #include <mstrlg/Listener.h>
@@ -10,13 +11,9 @@
 
 namespace MasterLog {
 
-Configuration::Configuration():Map(NULL, &help, NULL)
-{
-};
-
-int Configuration::initialize(int argc, char **argv)
-{
-    return 0;
-}
+Identification::Config::Config():Map("identification", NULL){}
+Listener::Config::Config():Array("listeners", ConfigVar::Type::MAP, NULL){}
+Connector::Config::Config():Array("connectors", ConfigVar::Type::MAP, NULL){}
+DiskLog::Config::Config():Map("disklog", NULL){}
 
 }

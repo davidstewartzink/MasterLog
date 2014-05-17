@@ -5,8 +5,8 @@
 
 namespace MasterLog {
 
-struct Configuration {
-
+struct Configuration : ConfigVar::Map
+{
 // Help for this Service:
     Help::Config help;
 
@@ -21,6 +21,9 @@ struct Configuration {
 
 // Parameters regarding Log Space Allocation:
     DiskLog::Config diskLogs;
+
+
+    Configuration();
 
     int initialize(int argc, char **argv);
     int validate();

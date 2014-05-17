@@ -1,11 +1,13 @@
 // Copyright (c) 2014, Kelp Heavy Weaponry
 // MasterLog project -- see MasterLog licencing for details.
 
-// API for the basic configuration library.
+// Disk-based Log storage/buffering
 
 namespace MasterLog {
-namespace Config {
+namespace DiskLog {
 
-// placeholder
+struct Config
+{
+};
 
-}} // Config : MasterLog
+}} // DiskLog : MasterLog

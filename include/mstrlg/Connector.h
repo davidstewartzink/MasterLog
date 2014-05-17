@@ -1,11 +1,13 @@
 // Copyright (c) 2014, Kelp Heavy Weaponry
 // MasterLog project -- see MasterLog licencing for details.
 
-#include <mstrlg/JSONParse.h>
+// TCP/UDP Connectors for this server/service
 
 namespace MasterLog {
-namespace JSON {
+namespace Connector {
 
-// placeholder
+struct Config
+{
+};
 
-}} // JSON : MasterLog
+}} // Connector : MasterLog

@@ -1,11 +1,13 @@
 // Copyright (c) 2014, Kelp Heavy Weaponry
 // MasterLog project -- see MasterLog licencing for details.
 
-#include <mstrlg/Config.h>
+// Identification for this server/service
 
 namespace MasterLog {
-namespace Config {
+namespace Identification {
 
-// placeholder
+struct Config
+{
+};
 
-}} // Config : MasterLog
+}} // Identification : MasterLog

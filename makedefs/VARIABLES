@@ -1,0 +1,19 @@
+#.SUFFIXES:
+.SUFFIXES: .o .cpp .c .h .hpp
+
+CXX?=g++
+CC?=gcc
+DBG=-g -ggdb
+#DBG=-O
+RANLIB=ranlib
+
+#note that default COMPILE.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+#note that default COMPILE.cpp = $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+#note that there is no way to define CPPFLAGS & TARGET_ARCH that works...
+CFLAGS=-Wall -Werror -Wunused -Wundef -Wsign-compare $(DBG) -D_GNU_SOURCE -Wshadow \
+	-Iinclude -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+CXXFLAGS=$(CFLAGS) -Wold-style-cast -pthread \
+	-Woverloaded-virtual -Wsign-promo -Wsynth \
+	-fno-exceptions -fno-rtti -fcheck-new -march=native
+
+MV?=/bin/mv

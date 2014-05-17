@@ -1,0 +1,112 @@
+# ! /usr/bin/gmake ## This is tested with gmake
+
+MAKE_FILES=Makefile makedefs/RULES makedefs/VARIABLES
+
+all : $(TOOLS) $(LIBRARIES) $(BINARIES) $(SCRIPTS)
+
+# These rules get rid of a lot of pointless (these days) make file checking.
+# To see what make is doing use "make -d". Obviously this breaks SCCS & RCS, lex & yacc, etc.
+$(MAKE_FILES) : ;
+.SUFFIXES :
+% :: %,v
+% :: RCS/%,v
+% :: RCS/%
+% :: s.%
+% :: SCCS/s.%
+#%.d :: ; # this case is handled down at the line: 'GRUESOME HACK'
+
+include makedefs/VARIABLES
+
+.PHONY : all clean report $(LIBRARIES) $(BINARIES) $(SCRIPTS) $(TOOLS)
+
+$(shell mkdir -p .deps .objs bin lib)
+
+clean :
+	$(RM) bin/* lib/*
+	$(RM) -r .deps .objs
+
+LIBRARY_NAMES:=$(foreach L,$(LIBRARIES),lib/lib$(PKGNAME)-$L.a)
+$(foreach L,$(LIBRARIES),$(eval LIBRARY_REFS=-l$(PKGNAME)-$L $(LIBRARY_REFS)))
+
+#The following line keeps gmake 3.8 on MAC OS X from blowing up (replaces, natch)
+$(foreach BIN,$(BINARIES),bin/$(BIN)) : $(LIBRARY_NAMES)
+
+DEPLIST := $(shell find .deps -type f)
+ifneq ($(DEPLIST),)
+$(DEPLIST) : ; #GRUESOME HACK (see above)
+include $(DEPLIST)
+show-deps:
+	echo $(DEPLIST)
+endif
+
+define MAKE_DIR
+$(1)_SRC=$$(wildcard $(1)/*.cpp)
+$(1)_CSRC=$$(wildcard $(1)/*.c)
+$(1)_CXXOBJS=$$(patsubst $(1)/%.cpp,.objs/$(1)/%.o,$$($(1)_SRC))
+$(1)_CCOBJS=$$(patsubst $(1)/%.c,.objs/$(1)/%.o,$$($(1)_CSRC))
+$(1)_OBJS=$$($(1)_CXXOBJS) $$($(1)_CCOBJS)
+
+$$($(1)_OBJS) : $(MAKE_FILES)
+
+$$($(1)_CXXOBJS) : .objs/$(1)/%.o : $(1)/%.cpp
+	$(CXX) $(CXXFLAGS) -o $$@ -c $$<
+	@$(CXX) $(CXXFLAGS) -MM -MP -MQ $$@ $$< > .deps/$(1)/$$$$(basename $$@).d
+
+$$($(1)_CCOBJS) : .objs/$(1)/%.o : $(1)/%.c
+	$(CC) $(CFLAGS) -o $$@ -c $$<
+	@$(CC) $(CFLAGS) -MM -MP -MQ $$@ $$< > .deps/$(1)/$$$$(basename $$@).d
+
+.deps/$(1) .objs/$(1) :
+	@mkdir -p $$@
+endef
+
+define MAKE_LIBRARY
+$(1): % : $(MAKE_FILES) lib/lib$(PKGNAME)-$(1).a
+
+
+lib/lib$(PKGNAME)-$(1).a : .deps/$(1) .objs/$(1) $$($(1)_OBJS)
+	@$(RM) $$@
+	$(AR) -cq $$@ $$($(1)_OBJS)
+ifneq ($(RANLIB),)
+	$(RANLIB) $$@
+endif
+endef
+
+define MAKE_BINARY
+$(1): % : $(MAKE_FILES) bin/%
+
+#The following line blows up gmake 3.8 on MAC OS X
+bin/$(1) : .deps/$(1) .objs/$(1) $$($(1)_OBJS) $$(LIBRARY_NAMES)
+	$$(CXX) $$(CXXFLAGS) -o $$@.tmp $$($(1)_OBJS) -Llib $$(LIBRARY_REFS) \
+		$$(SYSTEM_LIBRARIES)
+	$$(MV) $$@.tmp $$@
+endef
+
+define MAKE_TOOL
+$(1): % : $(MAKE_FILES) bin/%
+
+bin/$(1) : .deps/$(1) .objs/$(1) $$($(1)_OBJS)
+	$$(CXX) $$(CXXFLAGS) -o $$@.tmp $$($(1)_OBJS) $$(SYSTEM_LIBRARIES)
+	$$(MV) $$@.tmp $$@
+endef
+
+ifneq ($(SCRIPTS),)
+all : scripts
+scripts:
+	@for S in $(SCRIPTS) ; do rsync $$S/* bin/ ; done
+endif
+
+$(foreach DIR,$(TOOLS),$(eval $(call MAKE_DIR,$(DIR))))
+$(foreach TUL,$(TOOLS),$(eval $(call MAKE_TOOL,$(TUL))))
+$(foreach DIR,$(LIBRARIES) $(BINARIES),$(eval $(call MAKE_DIR,$(DIR))))
+$(foreach LIB,$(LIBRARIES),$(eval $(call MAKE_LIBRARY,$(LIB))))
+$(foreach BINA,$(BINARIES),$(eval $(call MAKE_BINARY,$(BINA))))
+
+report :
+	@-echo "TARGETS: all clean report"
+	@-echo "LIBRARIES: $(LIBRARIES)"
+	@-echo "BINARIES: $(BINARIES)"
+	@-echo "TOOLS: $(TOOLS)"
+	@-echo "LIBRARY_NAMES: $(LIBRARY_NAMES)"
+	@-echo "CFLAGS: $(CFLAGS)"
+	@-echo "CXXFLAGS: $(CXXFLAGS)"

@@ -12,7 +12,7 @@
 struct ErrorContext;
 
 namespace MasterLog {
-namespace JSON {
+namespace JSON_Config {
 typedef std::map<String, Value> ObjectMap;
 
 static void printString(const String& string, FILE* fp)
@@ -42,6 +42,11 @@ static void printString(const String& string, FILE* fp)
     putc('"', fp);
 }
 
+static void fillContext(ErrorContext*ctxt, const char *buffer, int off, int maxl, const char *error)
+{
+}
+
+
 static const Value constNull;
 
 struct IObject
@@ -64,7 +69,7 @@ struct IObject
             return constNull;
         return it->second;
     }
-    int initialize(const char *buffer, int off, int maxl);
+    int initialize(const char *buffer, int off, int maxl, ErrorContext* context);
     void print(FILE*fp, int depth)
     {
         ObjectMap::const_iterator it = map.begin();
@@ -128,7 +133,7 @@ struct IArray
         return values.size();
     }
 
-    int initialize(const char *buffer, int off, int maxl);
+    int initialize(const char *buffer, int off, int maxl, ErrorContext* context);
 };
 
 struct IString
@@ -138,7 +143,7 @@ struct IString
 
     IString():refCount(1){}
 
-    int initialize(const char *buffer, int off, int maxl);
+    int initialize(const char *buffer, int off, int maxl, ErrorContext* context);
 };
 
 static inline void incrementRef(Type::Instance type, intptr_t value)
@@ -297,7 +302,7 @@ int parseCopyNumber(Type::Instance* ptype, intptr_t* pval, const char *buffer, i
     return off + (e - x);
 }
 
-int parseNumber(Type::Instance* ptype, intptr_t* pval, const char *buffer, int off, int maxl)
+int parseNumber(Type::Instance* ptype, intptr_t* pval, const char *buffer, int off, int maxl, ErrorContext* context)
 {
     // this is the weird one; the last character in the buf can be a digit. Not a real case, though.
     int toff = off;
@@ -413,10 +418,11 @@ parseExponent:
     return e - buffer;
 }
 
-static int parseComment(const char *buffer, int off, int maxl)
+static int parseComment(const char *buffer, int off, int maxl, ErrorContext* context)
 {
     if (off == maxl)
     {
+        fillContext(context, buffer, off - 1, maxl, "Unexpected Character");
         return -1;
     }
     int c = buffer[off++];
@@ -429,6 +435,7 @@ static int parseComment(const char *buffer, int off, int maxl)
                 break;
             if (!c)
             {
+                fillContext(context, buffer, off - 1, maxl, "Unexpected Character (NUL)");
                 return -1;
             }
         }
@@ -436,18 +443,24 @@ static int parseComment(const char *buffer, int off, int maxl)
     }
     if (c != '*')
     {
+        fillContext(context, buffer, off - 1, maxl, "Unexpected Character");
         return -1;
     }
     for (;;)
     {
         if (off == maxl || !buffer[off])
         {
+            if (off == maxl)
+                fillContext(context, buffer, off - 1, maxl, "Unterminated Comment");
+            else
+                fillContext(context, buffer, off - 1, maxl, "Unexpected Character (NUL)");
             return -1;
         }
         if (buffer[off++] == '*')
         {
             if (off == maxl)
             {
+                fillContext(context, buffer, off - 1, maxl, "Unterminated Comment");
                 return -1;
             }
             if (buffer[off] == '/')
@@ -457,9 +470,80 @@ static int parseComment(const char *buffer, int off, int maxl)
     return off + 1;
 }
 
-static int parseString(char *target, int* targetLen, int maxTarget, const char *buffer, int off, int maxl)
+int Value::initialize(const char *buffer, int off, int maxl, ErrorContext* context)
+{
+    decrementRef(_type, _value);
+    _type = Type::JSNULL;
+
+    if (context && sizeof(void *) > sizeof(intptr_t))
+    {
+        context->errorMessage = "<Invalid Pointer Size>";
+        return -1;
+    }
+    while (off < maxl)
+    {
+        int c = buffer[off++];
+        if (c == '{')
+        {
+            IObject* io = new IObject;
+            off = io->initialize(buffer, off, maxl, context);
+            if (off < 0)
+            {
+                delete io;
+                return -1;
+            }
+            _type = Type::JSOBJECT;
+            _value = reinterpret_cast<intptr_t>(static_cast<void*>(io));
+            return off;
+        }
+        if (c == '[')
+        {
+            IArray* ia = new IArray;
+            off = ia->initialize(buffer, off, maxl, context);
+            if (off < 0)
+            {
+                delete ia;
+                return -1;
+            }
+            _type = Type::JSARRAY;
+            _value = reinterpret_cast<intptr_t>(static_cast<void*>(ia));
+            return off;
+        }
+        if (c == '"')
+        {
+            IString* is = new IString;
+            off = is->initialize(buffer, off, maxl, context);
+            if (off < 0)
+            {
+                delete is;
+                return -1;
+            }
+            _type = Type::JSSTRING;
+            _value = reinterpret_cast<intptr_t>(static_cast<void*>(is));
+            return off;
+        }
+        if (isdigit(c) || c == '-')
+        {
+            return parseNumber(&_type, &_value, buffer, off - 1, maxl, context);
+        }
+        if (isspace(c))
+            continue;
+        if (c != '/')
+        {
+            fillContext(context, buffer, off, maxl, "Unexpected Character");
+            return -1;
+        }
+        off = parseComment(buffer, off, maxl, context);
+        if (off < 0)
+            return off;
+    }
+    return off;
+}
+
+static int parseString(char *target, int* targetLen, int maxTarget, const char *buffer, int off, int maxl, ErrorContext* context)
 {
     int toff = 0;
+    int initOff = off;
     while (off < maxl)
     {
         int c = buffer[off++];
@@ -508,6 +592,7 @@ static int parseString(char *target, int* targetLen, int maxTarget, const char *
                     if (x + 4 == f)
                         break;
                 }
+                fillContext(context, buffer, off - 1, maxl, "Unexpected escaped character");
                 return -1;
             }
             break;
@@ -516,6 +601,7 @@ static int parseString(char *target, int* targetLen, int maxTarget, const char *
             {
                 if (c >= 0)
                 {
+                    fillContext(context, buffer, off - 1, maxl, "Unexpected character");
                     return -1;
                 }
             }
@@ -525,15 +611,16 @@ static int parseString(char *target, int* targetLen, int maxTarget, const char *
         toff += 1;
     }
 unterminated:
+    fillContext(context, buffer, initOff - 1, maxl, "Unterminated string");
     return -1;
 }
 
-int IString::initialize(const char *buffer, int off, int maxl)
+int IString::initialize(const char *buffer, int off, int maxl, ErrorContext* context)
 { // JSON standard: MUST be '"'
     // single parse if short; length and fill if long.
     char buf[100];
     int blen = 0;
-    int noff = parseString(buf, &blen, int(sizeof(buf)), buffer, off, maxl);
+    int noff = parseString(buf, &blen, int(sizeof(buf)), buffer, off, maxl, context);
     if (noff < 0)
         return noff;
     if (blen < int(sizeof(buf)))
@@ -542,14 +629,16 @@ int IString::initialize(const char *buffer, int off, int maxl)
         return noff;
     }
     char *t = new char[blen];
-    off = parseString(t, &blen, blen, buffer, off, maxl);
+    off = parseString(t, &blen, blen, buffer, off, maxl, context);
     assert(off == noff);
     delete[] t; // extra copy!!
     return off;
 }
 
-int IObject::initialize(const char *buffer, int off, int maxl)
+int IObject::initialize(const char *buffer, int off, int maxl, ErrorContext* context)
 {
+    int initOff = off;
+
     while (off < maxl)
     {
         int c = buffer[off++];
@@ -561,15 +650,16 @@ int IObject::initialize(const char *buffer, int off, int maxl)
                 return off;
             if (c == '/')
             {
-                off = parseComment(buffer, off, maxl);
+                off = parseComment(buffer, off, maxl, context);
                 if (off < 0)
                     return off;
                 continue;
             }
+            fillContext(context, buffer, off - 1, maxl, "Unexpected character");
             return -1;
         }
         IString current;
-        off = current.initialize(buffer, off, maxl);
+        off = current.initialize(buffer, off, maxl, context);
         if (off < 0)
             return off;
         while (off < maxl)
@@ -581,9 +671,10 @@ int IObject::initialize(const char *buffer, int off, int maxl)
                 break;
             if (c != '/')
             {
+                fillContext(context, buffer, off - 1, maxl, "Unexpected character");
                 return -1;
             }
-            off = parseComment(buffer, off, maxl);
+            off = parseComment(buffer, off, maxl, context);
             if (off < 0)
                 return off;
         }
@@ -591,14 +682,14 @@ int IObject::initialize(const char *buffer, int off, int maxl)
         if (it == map.end())
         {
             ObjectMap::value_type v(current.string, Value());
-            off = v.second.initialize(buffer, off, maxl);
+            off = v.second.initialize(buffer, off, maxl, context);
             if (off < 0)
                 return off;
             map.insert(v);
         }
         else
         {
-            off = it->second.initialize(buffer, off, maxl);
+            off = it->second.initialize(buffer, off, maxl, context);
             if (off < 0)
                 return off;
         }
@@ -613,19 +704,22 @@ int IObject::initialize(const char *buffer, int off, int maxl)
                 continue;
             if (c == '/')
             {
-                off = parseComment(buffer, off, maxl);
+                off = parseComment(buffer, off, maxl, context);
                 if (off < 0)
                     return off;
                 continue;
             }
+            fillContext(context, buffer, off - 1, maxl, "Unexpected character");
             return -1;
         }
     }
+    fillContext(context, buffer, initOff - 1, maxl, "Unterminated object");
     return -1;
 }
 
-int IArray::initialize(const char *buffer, int off, int maxl)
+int IArray::initialize(const char *buffer, int off, int maxl, ErrorContext* context)
 {
+    int initOff = off;
     bool needComma = false;
 
     while (off < maxl)
@@ -644,20 +738,22 @@ int IArray::initialize(const char *buffer, int off, int maxl)
             }
             if (c != '/')
             {
+                fillContext(context, buffer, off - 1, maxl, "Unexpected character");
                 return -1;
             }
-            off = parseComment(buffer, off, maxl);
+            off = parseComment(buffer, off, maxl, context);
             if (off < 0)
                 return off;
             continue;
         }
         Value v;
-        off = v.initialize(buffer, off - 1, maxl);
+        off = v.initialize(buffer, off - 1, maxl, context);
         if (off < 0)
             return off;
         values.push_back(v);
         needComma = true;
     }
+    fillContext(context, buffer, initOff - 1, maxl, "Unterminated array");
     return -1;
 }
 

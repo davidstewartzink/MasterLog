@@ -1,10 +1,10 @@
 // Copyright (c) 2014, Kelp Heavy Weaponry
 // MasterLog project -- see MasterLog licencing for details.
 
-// API for the JSON parsing library.
+// API for the JSON Init parsing library; for config files.
 
 namespace MasterLog {
-namespace JSON {
+namespace JSON_Config {
 
 namespace Type {
     enum Instance {
@@ -18,18 +18,34 @@ namespace Type {
     };
 }
 
+struct ErrorContext
+{
+    ErrorContext(const char *fn):fileName(fn),errorMessage("<none>"),linePointer(""),lineLength(0),byteOffset(0),lineNumber(0){}
+    const char *const fileName;
+    const char *errorMessage;
+    const char *linePointer;
+    int lineLength;
+    int byteOffset;
+    int lineNumber;
+};
+
 class Value
 {
     Type::Instance _type;
     intptr_t _value;
+    const char *_fileName;
+    const char *_linePointer;
+    int _lineLength;
+    int _byteOffset;
+    int _lineNumber;
 public:
     Value();
     Value(const Value&);
     Value& operator=(const Value&);
     ~Value();
 
-    // How we use this to be determined...
-    int initialize(const char *buffer, int off, int maxl);
+    // returns number of bytes consumed, -1 if parsing fails.
+    int initialize(const char *buffer, int off, int maxl, ErrorContext* ctxt);
 
     Type::Instance type() const { return _type; }
 
@@ -46,6 +62,12 @@ public:
 
     void print(FILE* fp) const;
     void print(FILE*fp, int depth) const;
+
+    const char *const fileName() const;
+    const char *linePointer() const;
+    int lineLength() const;
+    int byteOffset() const;
+    int lineNumber() const;
 };
 
-}} // JSON : MasterLog
+}} // JSON_Config : MasterLog

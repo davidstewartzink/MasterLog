@@ -5,14 +5,12 @@
 
 namespace MasterLog {
 
-struct Configuration
+struct Configuration : JSON_Config::Value 
 {
     Configuration();
 
     int initialize(int argc, char **argv);
     int validate();
-
-    void print(FILE*);
 };
 
 } // Config : MasterLog

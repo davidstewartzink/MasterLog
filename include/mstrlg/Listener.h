@@ -6,9 +6,4 @@
 namespace MasterLog {
 namespace Listener {
 
-struct Config : ConfigVar::Array
-{
-    Config();
-};
-
 }} // Listener : MasterLog

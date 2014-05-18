@@ -10,10 +10,6 @@ namespace Help {
 
 const char *exeName = "masterlog";
 
-Config::Config():Map("help", NULL)
-{
-}
-
 int initialize(int argc, char **argv)
 {
     if (argv[0] && argv[0][0])

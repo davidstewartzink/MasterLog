@@ -6,7 +6,6 @@
 
 #include <mstrlg/Platform.h>
 #include <mstrlg/StringCentral.h>
-#include <mstrlg/ConfigVar.h>
 #include <mstrlg/Logging.h>
 #include <mstrlg/JSONParse.h>
 #include <mstrlg/Identification.h>

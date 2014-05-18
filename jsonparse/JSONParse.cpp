@@ -9,9 +9,11 @@
 #include <map>
 #include <vector>
 
+struct ErrorContext;
+
 namespace MasterLog {
 namespace JSON {
-typedef std::map<String, JSON_Value> ObjectMap;
+typedef std::map<String, Value> ObjectMap;
 
 static void printString(const String& string, FILE* fp)
 {
@@ -42,39 +44,10 @@ static void printString(const String& string, FILE* fp)
 
 static void fillContext(ErrorContext*ctxt, const char *buffer, int off, int maxl, const char *error)
 {
-    if (!ctxt)
-        return;
-    if (off > maxl)
-        off = maxl;
-    int ln = 1;
-    const char *lp = buffer;
-    for (int i = 0; i < off;)
-    {
-        if (!buffer[i])
-        {
-            ctxt->errorMessage = "Unexpected Character (NUL)";
-            ctxt->linePointer = lp;
-            ctxt->lineNumber = ln;
-            ctxt->lineLength = ctxt->byteOffset = &buffer[i] - lp;
-            return;
-        }
-        if (buffer[i++] == '\n')
-        {
-            lp = &buffer[i];
-            ln += 1;
-        }
-    }
-    ctxt->errorMessage = error;
-    ctxt->linePointer = lp;
-    ctxt->lineNumber = ln;
-    ctxt->byteOffset = &buffer[off] - lp;
-    while (off < maxl && buffer[off] && buffer[off] != '\n')
-        off += 1;
-    ctxt->lineLength = &buffer[off] - lp;
 }
 
 
-static const JSON_Value constNull;
+static const Value constNull;
 
 struct IObject
 {
@@ -89,7 +62,7 @@ struct IObject
     {
     }
 
-    const JSON_Value& member(String const& name) const
+    const Value& member(String const& name) const
     {
         ObjectMap::const_iterator it = map.find(name);
         if (it == map.end())
@@ -138,7 +111,7 @@ struct IObject
 struct IArray
 {
     unsigned refCount;
-    std::vector<JSON_Value> values;
+    std::vector<Value> values;
 
     IArray():refCount(1)
     {
@@ -148,7 +121,7 @@ struct IArray
     {
     }
 
-    const JSON_Value& element(unsigned index) const
+    const Value& element(unsigned index) const
     {
         if (index < count())
             return values[index];
@@ -231,14 +204,14 @@ static inline void decrementRef(Type::Instance type, intptr_t value)
     }
 }
 
-JSON_Value::JSON_Value():_type(Type::JSNULL){}
+Value::Value():_type(Type::JSNULL){}
 
-JSON_Value::JSON_Value(const JSON_Value&rhs):_type(rhs._type),_value(rhs._value)
+Value::Value(const Value&rhs):_type(rhs._type),_value(rhs._value)
 {
     incrementRef(_type, _value);
 }
 
-JSON_Value& JSON_Value::operator=(const JSON_Value& rhs)
+Value& Value::operator=(const Value& rhs)
 {
     if (_value != rhs._value || _type != rhs._type)
     {
@@ -250,35 +223,35 @@ JSON_Value& JSON_Value::operator=(const JSON_Value& rhs)
     return *this;
 }
 
-JSON_Value::~JSON_Value()
+Value::~Value()
 {
     decrementRef(_type, _value);
 }
 
-bool JSON_Value::isNull() const
+bool Value::isNull() const
 {
     return _type == Type::JSNULL;
 }
 
-bool JSON_Value::boolValue() const
+bool Value::boolValue() const
 {
     assert(_type == Type::JSBOOL);
     return _value;
 }
 
-int64_t JSON_Value::integerValue() const
+int64_t Value::integerValue() const
 {
     assert(_type == Type::JSINTEGER);
     return _value;
 }
 
-double JSON_Value::numberValue() const
+double Value::numberValue() const
 {
     assert(_type == Type::JSNUMBER || _type == Type::JSINTEGER);
     return *reinterpret_cast<const double*>(&_value);
 }
 
-String JSON_Value::stringValue() const
+String Value::stringValue() const
 {
     assert(_type == Type::JSSTRING);
     IString* is = static_cast<IString*>(reinterpret_cast<void*>(_value));
@@ -286,7 +259,7 @@ String JSON_Value::stringValue() const
     return is->string;
 }
 
-const JSON_Value& JSON_Value::member(String const& name) const
+const Value& Value::member(String const& name) const
 {
     assert(_type == Type::JSOBJECT);
     IObject* io = static_cast<IObject*>(reinterpret_cast<void*>(_value));
@@ -294,7 +267,7 @@ const JSON_Value& JSON_Value::member(String const& name) const
     return io->member(name);
 }
 
-const JSON_Value& JSON_Value::element(unsigned index) const
+const Value& Value::element(unsigned index) const
 {
     assert(_type == Type::JSARRAY);
     IArray* ia = static_cast<IArray*>(reinterpret_cast<void*>(_value));
@@ -302,7 +275,7 @@ const JSON_Value& JSON_Value::element(unsigned index) const
     return ia->element(index);
 }
 
-unsigned JSON_Value::count(void) const
+unsigned Value::count(void) const
 {
     assert(_type == Type::JSARRAY);
     IArray* ia = static_cast<IArray*>(reinterpret_cast<void*>(_value));
@@ -497,76 +470,6 @@ static int parseComment(const char *buffer, int off, int maxl, ErrorContext* con
     return off + 1;
 }
 
-int JSON_Value::initialize(const char *buffer, int off, int maxl, ErrorContext* context)
-{
-    decrementRef(_type, _value);
-    _type = Type::JSNULL;
-
-    if (context && sizeof(void *) > sizeof(intptr_t))
-    {
-        context->errorMessage = "<Invalid Pointer Size>";
-        return -1;
-    }
-    while (off < maxl)
-    {
-        int c = buffer[off++];
-        if (c == '{')
-        {
-            IObject* io = new IObject;
-            off = io->initialize(buffer, off, maxl, context);
-            if (off < 0)
-            {
-                delete io;
-                return -1;
-            }
-            _type = Type::JSOBJECT;
-            _value = reinterpret_cast<intptr_t>(static_cast<void*>(io));
-            return off;
-        }
-        if (c == '[')
-        {
-            IArray* ia = new IArray;
-            off = ia->initialize(buffer, off, maxl, context);
-            if (off < 0)
-            {
-                delete ia;
-                return -1;
-            }
-            _type = Type::JSARRAY;
-            _value = reinterpret_cast<intptr_t>(static_cast<void*>(ia));
-            return off;
-        }
-        if (c == '"')
-        {
-            IString* is = new IString;
-            off = is->initialize(buffer, off, maxl, context);
-            if (off < 0)
-            {
-                delete is;
-                return -1;
-            }
-            _type = Type::JSSTRING;
-            _value = reinterpret_cast<intptr_t>(static_cast<void*>(is));
-            return off;
-        }
-        if (isdigit(c) || c == '-')
-        {
-            return parseNumber(&_type, &_value, buffer, off - 1, maxl, context);
-        }
-        if (isspace(c))
-            continue;
-        if (c != '/')
-        {
-            fillContext(context, buffer, off, maxl, "Unexpected Character");
-            return -1;
-        }
-        off = parseComment(buffer, off, maxl, context);
-        if (off < 0)
-            return off;
-    }
-    return off;
-}
-
 static int parseString(char *target, int* targetLen, int maxTarget, const char *buffer, int off, int maxl, ErrorContext* context)
 {
     int toff = 0;
@@ -708,7 +611,7 @@ int IObject::initialize(const char *buffer, int off, int maxl, ErrorContext* con
         ObjectMap::iterator it = map.find(current.string);
         if (it == map.end())
         {
-            ObjectMap::value_type v(current.string, JSON_Value());
+            ObjectMap::value_type v(current.string, Value());
             off = v.second.initialize(buffer, off, maxl, context);
             if (off < 0)
                 return off;
@@ -773,7 +676,7 @@ int IArray::initialize(const char *buffer, int off, int maxl, ErrorContext* cont
                 return off;
             continue;
         }
-        JSON_Value v;
+        Value v;
         off = v.initialize(buffer, off - 1, maxl, context);
         if (off < 0)
             return off;
@@ -784,7 +687,7 @@ int IArray::initialize(const char *buffer, int off, int maxl, ErrorContext* cont
     return -1;
 }
 
-void JSON_Value::print(FILE* fp, int depth) const
+void Value::print(FILE* fp, int depth) const
 {
     switch(_type)
     {
@@ -841,7 +744,7 @@ void JSON_Value::print(FILE* fp, int depth) const
     fputs("<error>", fp);
 }
 
-void JSON_Value::print(FILE* fp) const
+void Value::print(FILE* fp) const
 {
     print(fp, 0);
     putc('\n', fp);

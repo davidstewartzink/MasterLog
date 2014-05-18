@@ -18,28 +18,18 @@ namespace Type {
     };
 }
 
-struct ErrorContext
-{
-    ErrorContext():errorMessage("<none>"),linePointer(""),lineLength(0),byteOffset(0),lineNumber(0){}
-    const char *errorMessage;
-    const char *linePointer;
-    int lineLength;
-    int byteOffset;
-    int lineNumber;
-};
-
-class JSON_Value
+class Value
 {
     Type::Instance _type;
     intptr_t _value;
 public:
-    JSON_Value();
-    JSON_Value(const JSON_Value&);
-    JSON_Value& operator=(const JSON_Value&);
-    ~JSON_Value();
+    Value();
+    Value(const Value&);
+    Value& operator=(const Value&);
+    ~Value();
 
-    // returns number of bytes consumed, -1 if parsing fails.
-    int initialize(const char *buffer, int off, int maxl, ErrorContext* ctxt);
+    // How we use this to be determined...
+    //int initialize(const char *buffer, int off, int maxl, ErrorContext* ctxt);
 
     Type::Instance type() const { return _type; }
 
@@ -50,9 +40,9 @@ public:
     String stringValue() const;
 
     unsigned count() const;
-    const JSON_Value& element(unsigned index) const;
+    const Value& element(unsigned index) const;
 
-    const JSON_Value& member(String const& name) const;
+    const Value& member(String const& name) const;
 
     void print(FILE* fp) const;
     void print(FILE*fp, int depth) const;

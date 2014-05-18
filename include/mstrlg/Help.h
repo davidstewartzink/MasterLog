@@ -8,11 +8,6 @@ namespace Help {
 
 extern const char *exeName;
 
-struct Config : ConfigVar::Map
-{
-    Config();
-};
-
 int initialize(int argc, char **argv);
 
 void switchToRunning();

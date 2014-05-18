@@ -7,8 +7,4 @@
 
 namespace MasterLog {
 
-Listener::Config::Config():Array("listeners", ConfigVar::Type::MAP, NULL){}
-Connector::Config::Config():Array("connectors", ConfigVar::Type::MAP, NULL){}
-DiskLog::Config::Config():Map("disklog", NULL){}
-
 }

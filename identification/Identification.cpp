@@ -7,8 +7,4 @@
 
 namespace MasterLog {
 
-Identification::Config::Config():Map("identification", &system, &user, NULL),system("system",NULL),user("user",NULL)
-{
-}
-
 }

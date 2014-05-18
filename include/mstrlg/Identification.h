@@ -8,6 +8,9 @@ namespace Identification {
 
 struct Config : ConfigVar::Map
 {
+    ConfigVar::CString system;
+    ConfigVar::CString user;
+
     Config();
 };
 

@@ -1,13 +1,7 @@
-#include <mstrlg/Platform.h>
-#include <mstrlg/ConfigVar.h>
-#include <mstrlg/Logging.h>
-#include <mstrlg/JSONParse.h>
-#include <mstrlg/Identification.h>
-#include <mstrlg/Listener.h>
-#include <mstrlg/Connector.h>
-#include <mstrlg/DiskLog.h>
-#include <mstrlg/Help.h>
-#include <mstrlg/Configuration.h>
+// Copyright (c) 2014, Kelp Heavy Weaponry
+// MasterLog project -- see MasterLog licencing for details.
+
+#include <mstrlg/Everything.h>
 
 namespace MasterLog {
 
@@ -22,6 +16,10 @@ int main(int argc, char **argv)
     r = configuration.initialize(argc, argv);
     if (r) return r;
 
+    Debug("initialized");
+    fprintf(stderr, "Configuration = ");
+    configuration.print(stderr);
+
     return 0;
 }
 
@@ -29,5 +27,6 @@ int main(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-    return MasterLog::main(argc, argv);
+    int r = MasterLog::main(argc, argv);
+    return r < 0 ? 1 : r;
 }

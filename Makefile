@@ -16,6 +16,6 @@ BINARIES=\
 SYSTEM_LIBRARIES=
 
 default-target: bin/masterlog
-	bin/masterlog -f samples/etc/masterlog.conf
+	bin/masterlog -f samples/etc/masterlog.conf -f samples/etc/masterlog.conf
 
 include makedefs/RULES

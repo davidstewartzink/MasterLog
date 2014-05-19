@@ -6,7 +6,7 @@
 namespace MasterLog {
 
 // Configured values:
-static Configuration configuration;
+static Configuration configuration("/etc/masterlog.conf");
 
 int main(int argc, char **argv)
 {

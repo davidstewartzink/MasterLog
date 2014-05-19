@@ -13,7 +13,6 @@ struct ErrorContext;
 
 namespace MasterLog {
 namespace JSON_Config {
-typedef std::map<String, Value> ObjectMap;
 
 static void printString(const String& string, FILE* fp)
 {
@@ -51,8 +50,9 @@ static const Value constNull;
 
 struct IObject
 {
+    typedef std::map<String, Value> Map;
     unsigned refCount;
-    ObjectMap map;
+    Map map;
 
     IObject():refCount(1)
     {
@@ -62,17 +62,38 @@ struct IObject
     {
     }
 
+    void setMember(String const& name, Value const& val)
+    {
+        map.insert(Map::value_type(name, val));
+    }
+
     const Value& member(String const& name) const
     {
-        ObjectMap::const_iterator it = map.find(name);
+        Map::const_iterator it = map.find(name);
         if (it == map.end())
             return constNull;
         return it->second;
     }
+
     int initialize(const char *buffer, int off, int maxl, ErrorContext* context);
+
+    unsigned keys(String* kys, unsigned maxKeys) const
+    {
+        Map::const_iterator it = map.begin();
+        unsigned ret = 0;
+        while (it != map.end())
+        {
+            if (ret < maxKeys)
+                kys[ret] = it->first;
+            ret += 1;
+            it++;
+        }
+        return ret;
+    }
+
     void print(FILE*fp, int depth)
     {
-        ObjectMap::const_iterator it = map.begin();
+        Map::const_iterator it = map.begin();
         putc('{', fp);
         if (it == map.end())
         {
@@ -131,6 +152,17 @@ struct IArray
     unsigned count() const
     {
         return values.size();
+    }
+
+    void appendElement(Value const& val)
+    {
+        values.push_back(val);
+    }
+
+    void appendElements(Value const& val)
+    {
+        for (unsigned i = 0; i < val.count(); ++i)
+            appendElement(val.element(i));
     }
 
     int initialize(const char *buffer, int off, int maxl, ErrorContext* context);
@@ -211,6 +243,19 @@ Value::Value(const Value&rhs):_type(rhs._type),_value(rhs._value)
     incrementRef(_type, _value);
 }
 
+Value::Value(Type::Instance typ, const Value& val):_type(Type::JSNULL),_value(0)
+{
+    if (typ != Type::JSARRAY)
+    {
+        *this = val;
+        return;
+    }
+    IArray* ia = new IArray;
+    _type = Type::JSARRAY;
+    _value = reinterpret_cast<intptr_t>(static_cast<void*>(ia));
+    ia->appendElement(val);
+}
+
 Value& Value::operator=(const Value& rhs)
 {
     if (_value != rhs._value || _type != rhs._type)
@@ -267,6 +312,22 @@ const Value& Value::member(String const& name) const
     return io->member(name);
 }
 
+void Value::setMember(String const& name, Value const& val) const
+{
+    assert(_type == Type::JSOBJECT);
+    IObject* io = static_cast<IObject*>(reinterpret_cast<void*>(_value));
+    assert(io);
+    return io->setMember(name, val);
+}
+
+unsigned Value::keys(String* kys, unsigned maxKeys) const
+{
+    assert(_type == Type::JSOBJECT);
+    IObject* io = static_cast<IObject*>(reinterpret_cast<void*>(_value));
+    assert(io);
+    return io->keys(kys, maxKeys);
+}
+
 const Value& Value::element(unsigned index) const
 {
     assert(_type == Type::JSARRAY);
@@ -281,6 +342,22 @@ unsigned Value::count(void) const
     IArray* ia = static_cast<IArray*>(reinterpret_cast<void*>(_value));
     assert(ia);
     return ia->count();
+}
+
+void Value::appendElements(Value const& val) const
+{
+    assert(_type == Type::JSARRAY);
+    IArray* ia = static_cast<IArray*>(reinterpret_cast<void*>(_value));
+    assert(ia);
+    return ia->appendElements(val);
+}
+
+void Value::appendElement(Value const& val) const
+{
+    assert(_type == Type::JSARRAY);
+    IArray* ia = static_cast<IArray*>(reinterpret_cast<void*>(_value));
+    assert(ia);
+    return ia->appendElement(val);
 }
 
 int parseCopyNumber(Type::Instance* ptype, intptr_t* pval, const char *buffer, int off, int maxl)
@@ -678,10 +755,10 @@ int IObject::initialize(const char *buffer, int off, int maxl, ErrorContext* con
             if (off < 0)
                 return off;
         }
-        ObjectMap::iterator it = map.find(current.string);
+        Map::iterator it = map.find(current.string);
         if (it == map.end())
         {
-            ObjectMap::value_type v(current.string, Value());
+            Map::value_type v(current.string, Value());
             off = v.second.initialize(buffer, off, maxl, context);
             if (off < 0)
                 return off;

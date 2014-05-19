@@ -7,7 +7,7 @@ namespace MasterLog {
 
 struct Configuration : JSON_Config::Value 
 {
-    Configuration();
+    Configuration(const char *defaultFileName);
 
     int initialize(int argc, char **argv);
     int validate();

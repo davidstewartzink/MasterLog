@@ -40,6 +40,7 @@ class Value
     int _lineNumber;
 public:
     Value();
+    Value(Type::Instance, const Value&);
     Value(const Value&);
     Value& operator=(const Value&);
     ~Value();
@@ -57,8 +58,12 @@ public:
 
     unsigned count() const;
     const Value& element(unsigned index) const;
+    void appendElement(Value const&) const;
+    void appendElements(Value const&) const;
 
     const Value& member(String const& name) const;
+    void setMember(String const& name, Value const&) const;
+    unsigned keys(String* keys, unsigned maxKeys) const;
 
     void print(FILE* fp) const;
     void print(FILE*fp, int depth) const;

@@ -13,9 +13,23 @@ Configuration::Configuration(const char *def)
     defaultConfigFile = def;
 }
 
-static int applyApply(JSON_Config::Value* obj, JSON_Config::Value const &val);
+static int valOverVal(JSON_Config::Value* obj, JSON_Config::Value const &val);
 
-static int objectOverObject(JSON_Config::Value* obj, JSON_Config::Value const &val)
+static int arrayExtendsArray(JSON_Config::Value* obj, JSON_Config::Value const &val)
+{
+    int n = val.count();
+    for (int i = 0; i < n; ++i)
+    {
+        JSON_Config::Value tmp;
+        int r = valOverVal(&tmp, val.element(i));
+        if (r)
+            return r;
+        obj->appendElement(tmp);
+    }
+    return 0;
+}
+
+static int objectExtendsObject(JSON_Config::Value* obj, JSON_Config::Value const &val)
 {
     int r = 0;
     const unsigned nKeys = val.keys(NULL, 0);
@@ -28,44 +42,90 @@ static int objectOverObject(JSON_Config::Value* obj, JSON_Config::Value const &v
         JSON_Config::Value const &subVal(val.member(k));
         if (l <= 8 || ::memcmp(k.value(), "extends:", 8))
         {
-            obj->setMember(k, subVal);
+            JSON_Config::Value tmp;
+            r = valOverVal(&tmp, subVal);
+            if (r)
+                return r;
+            obj->setMember(k, tmp);
             continue;
         }
         if (subVal.type() == JSON_Config::Type::JSNULL)
             continue;
         k.fromText(k.value() + 8, l - 8);
-        JSON_Config::Value const & subObj(obj->member(k));
+        JSON_Config::Value subObj(obj->member(k));
         if (subObj.type() == JSON_Config::Type::JSNULL)
-        {
-            obj->setMember(k, subVal);
-            continue;
-        }
-        if (subObj.type() == JSON_Config::Type::JSARRAY)
+            r = valOverVal(&subObj, subVal);
+        else if (subObj.type() == JSON_Config::Type::JSARRAY)
         {
             if (subVal.type() == JSON_Config::Type::JSARRAY)
-                subObj.appendElements(subVal);
+                r = arrayExtendsArray(&subObj, subVal);
             else
-                subObj.appendElement(subVal);
-            continue;
+            {
+                JSON_Config::Value tmp;
+                r = valOverVal(&tmp, subVal);
+                if (r)
+                    return r;
+                obj->member(k).appendElement(subVal);
+                continue;
+            }
         }
-        JSON_Config::Value x(JSON_Config::Type::JSARRAY, subObj);
-        if (subVal.type() == JSON_Config::Type::JSARRAY)
-            subObj.appendElements(subVal);
+        else if (subVal.type() == JSON_Config::Type::JSARRAY)
+        {
+            JSON_Config::Value tmp(subObj);
+            subObj = JSON_Config::Value(JSON_Config::Type::JSARRAY);
+            subObj.appendElement(tmp);
+            r = arrayExtendsArray(&subObj, subVal);
+        }
+        else if (subObj.type() == JSON_Config::Type::JSOBJECT)
+        {
+            if (subVal.type() != JSON_Config::Type::JSOBJECT)
+            {
+                ErrorLog("Cannot extend an object with a non-object: %.*s", k.length(), k.value());
+                return 1;
+            }
+            r = objectExtendsObject(&subObj, subVal);
+        }
         else
-            subObj.appendElement(subVal);
-        obj->setMember(k, x);
+        {
+            ErrorLog("Cannot extend a non-object: %.*s", k.length(), k.value());
+            return 1;
+        }
+        if (r)
+            return r;
+        obj->setMember(k, subObj);
     }
     delete[] keys;
     return r;
 }
 
-// assume they have the same "name"; replace or extend values
-static int applyApply(JSON_Config::Value* obj, JSON_Config::Value const &val)
+// assume they have the same "name"; replace values
+static int valOverVal(JSON_Config::Value* obj, JSON_Config::Value const &val)
 {
-    if (val.type() == JSON_Config::Type::JSOBJECT && obj->type() == JSON_Config::Type::JSOBJECT)
-        return objectOverObject(obj, val);
+    if (val.type() == JSON_Config::Type::JSOBJECT)
+    {
+        *obj = JSON_Config::Value(JSON_Config::Type::JSOBJECT);
+        return objectExtendsObject(obj, val);
+    }
+    if (val.type() == JSON_Config::Type::JSARRAY)
+    {
+        *obj = JSON_Config::Value(JSON_Config::Type::JSARRAY);
+        return arrayExtendsArray(obj, val);
+    }
     *obj = val;
     return 0;
+}
+
+// assume they have the same "name"; replace values
+static int valExtendsVal(JSON_Config::Value* obj, JSON_Config::Value const &val)
+{
+    if (val.type() != JSON_Config::Type::JSOBJECT)
+    {
+        Error("Configuration file must hold an object");
+        return 1;
+    }
+    if (obj->type() != JSON_Config::Type::JSOBJECT)
+        *obj = JSON_Config::Value(JSON_Config::Type::JSOBJECT);
+    return objectExtendsObject(obj, val);
 }
 
 static int applyConfigFile(Configuration* obj, const char *fname)
@@ -124,8 +184,7 @@ static int applyConfigFile(Configuration* obj, const char *fname)
         }
         else
         {
-            config.print(stderr);
-            r = applyApply(obj, config);
+            r = valExtendsVal(obj, config);
         }
     }
     delete[] buffer;

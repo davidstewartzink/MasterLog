@@ -40,7 +40,7 @@ class Value
     int _lineNumber;
 public:
     Value();
-    Value(Type::Instance, const Value&);
+    Value(Type::Instance);
     Value(const Value&);
     Value& operator=(const Value&);
     ~Value();

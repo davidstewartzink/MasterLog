@@ -243,17 +243,14 @@ Value::Value(const Value&rhs):_type(rhs._type),_value(rhs._value)
     incrementRef(_type, _value);
 }
 
-Value::Value(Type::Instance typ, const Value& val):_type(Type::JSNULL),_value(0)
+Value::Value(Type::Instance typ):_type(typ),_value(0)
 {
-    if (typ != Type::JSARRAY)
-    {
-        *this = val;
-        return;
-    }
-    IArray* ia = new IArray;
-    _type = Type::JSARRAY;
-    _value = reinterpret_cast<intptr_t>(static_cast<void*>(ia));
-    ia->appendElement(val);
+    if (typ == Type::JSARRAY)
+        _value = reinterpret_cast<intptr_t>(static_cast<void*>(new IArray));
+    else if (typ == Type::JSOBJECT)
+        _value = reinterpret_cast<intptr_t>(static_cast<void*>(new IObject));
+    else if (typ == Type::JSSTRING)
+        _value = reinterpret_cast<intptr_t>(static_cast<void*>(new IString));
 }
 
 Value& Value::operator=(const Value& rhs)

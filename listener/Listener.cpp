@@ -1,9 +1,8 @@
 // Copyright (c) 2014, Kelp Heavy Weaponry
 // MasterLog project -- see MasterLog licencing for details.
 
-// Disk-based Log storage/buffering
+#include <mstrlg/Everything.h>
 
-namespace MasterLog {
-namespace DiskLog {
+namespace MasterLog { namespace Listener {
 
-}} // DiskLog : MasterLog
+}}

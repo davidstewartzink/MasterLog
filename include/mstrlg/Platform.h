@@ -11,3 +11,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
+#if MSTRLG_USE_POLL
+#include <poll.h>
+#endif

@@ -275,6 +275,36 @@ bool Value::isNull() const
     return _type == Type::JSNULL;
 }
 
+bool Value::isObject() const
+{
+    return _type == Type::JSOBJECT;
+}
+
+bool Value::isArray() const
+{
+    return _type == Type::JSARRAY;
+}
+
+bool Value::isString() const
+{
+    return _type == Type::JSSTRING;
+}
+
+bool Value::isInteger() const
+{
+    return _type == Type::JSINTEGER;
+}
+
+bool Value::isNumber() const
+{
+    return _type == Type::JSNUMBER;
+}
+
+bool Value::isBool() const
+{
+    return _type == Type::JSBOOL;
+}
+
 bool Value::boolValue() const
 {
     assert(_type == Type::JSBOOL);

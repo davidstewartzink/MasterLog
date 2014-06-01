@@ -20,13 +20,13 @@ int main(int argc, char **argv)
     fprintf(stderr, "Configuration = ");
     configuration.print(stderr);
 
-    r = File::configure(configuration);
+    r = Storage::configure(configuration);
     if (r) return r;
 
     r = Network::configure(configuration);
     if (r) return r;
 
-    return 0;
+    return Network::run();
 }
 
 }

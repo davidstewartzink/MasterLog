@@ -51,6 +51,13 @@ public:
     Type::Instance type() const { return _type; }
 
     bool isNull() const;
+    bool isObject() const;
+    bool isArray() const;
+    bool isString() const;
+    bool isInteger() const;
+    bool isNumber() const;
+    bool isBool() const;
+
     bool boolValue() const;
     int64_t integerValue() const;
     double numberValue() const;

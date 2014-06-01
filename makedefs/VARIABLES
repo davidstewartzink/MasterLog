@@ -7,8 +7,10 @@ DBG=-g -ggdb
 #DBG=-O
 RANLIB=ranlib
 
-ifneq ($(shell $(CC) -v 2>&1 | fgrep -i clang),)
-GPP_CXXFLAGS=-fcheck-new -pthread
+ifeq ($(shell $(CC) -v 2>&1 | fgrep -i clang),)
+PLATFORM_CXXFLAGS=-fcheck-new -pthread -DMSTRLG_USE_POLL=0
+else
+PLATFORM_CXXFLAGS=-DMSTRLG_USE_POLL=1
 endif
 
 #note that default COMPILE.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
@@ -18,6 +20,6 @@ CFLAGS=-Wall -Werror -Wunused -Wundef -Wsign-compare $(DBG) -D_GNU_SOURCE -Wshad
 	-Iinclude -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
 CXXFLAGS=$(CFLAGS) -Wold-style-cast \
 	-Woverloaded-virtual -Wsign-promo -Wsynth \
-	-fno-exceptions -fno-rtti $(CLANG_CXXFLAGS) -march=native
+	-fno-exceptions -fno-rtti $(PLATFORM_CXXFLAGS) -march=native
 
 MV?=/bin/mv

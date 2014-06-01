@@ -10,6 +10,8 @@ It must open ports, sequence objects received, provide sequenced objects
 to listeners.
 
 Time to start working on TCP.
+
+Remember to handle signals.
 */
 
 #include <mstrlg/Everything.h>

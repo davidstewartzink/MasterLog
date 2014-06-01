@@ -3,11 +3,13 @@ PKGNAME=mstrlg
 LIBRARIES=\
 	todo \
 	config \
+    network \
+    listener \
+    connector \
 	identification \
 	stringcentral \
 	logging \
-    network \
-    file \
+    storage \
 	jsonparse \
 	$(END_OF_LIST)
 

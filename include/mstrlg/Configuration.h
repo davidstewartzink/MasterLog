@@ -13,4 +13,4 @@ struct Configuration : JSON_Config::Value
     int validate();
 };
 
-} // Config : MasterLog
+} // MasterLog

@@ -1,7 +1,16 @@
 // Copyright (c) 2014, Kelp Heavy Weaponry
 // MasterLog project -- see MasterLog licencing for details.
 //
-// Noting to be proud of
+// Nothing to be proud of
+
+/*
+What is the "core" of this project?
+
+It must open ports, sequence objects received, provide sequenced objects
+to listeners.
+
+Time to start working on TCP.
+*/
 
 #include <mstrlg/Everything.h>
 

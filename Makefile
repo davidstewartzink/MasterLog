@@ -6,6 +6,8 @@ LIBRARIES=\
 	identification \
 	stringcentral \
 	logging \
+    network \
+    file \
 	jsonparse \
 	$(END_OF_LIST)
 

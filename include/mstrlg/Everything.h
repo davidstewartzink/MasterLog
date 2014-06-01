@@ -15,4 +15,6 @@
 #include <mstrlg/DiskLog.h>
 #include <mstrlg/Help.h>
 #include <mstrlg/Configuration.h>
+#include <mstrlg/File.h>
+#include <mstrlg/Network.h>
 

@@ -4,9 +4,11 @@ LIBRARIES=\
 	todo \
 	config \
     network \
+    protocol \
     listener \
     connector \
 	identification \
+	nameresolution \
 	stringcentral \
 	logging \
     storage \

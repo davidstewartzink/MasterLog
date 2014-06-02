@@ -7,10 +7,10 @@ DBG=-g -ggdb
 #DBG=-O
 RANLIB=ranlib
 
-ifeq ($(shell $(CC) -v 2>&1 | fgrep -i clang),)
-PLATFORM_CXXFLAGS=-fcheck-new -pthread -DMSTRLG_USE_POLL=0
-else
+ifneq ($(shell $(CC) -v 2>&1 | fgrep -i clang),)
 PLATFORM_CXXFLAGS=-DMSTRLG_USE_POLL=1
+else
+PLATFORM_CXXFLAGS=-fcheck-new -pthread -DMSTRLG_USE_POLL=0
 endif
 
 #note that default COMPILE.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c

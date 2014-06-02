@@ -7,14 +7,21 @@ namespace MasterLog {
 
 struct Completion
 {
-    typedef void (*X)(void *data);
-    void *data;
-    X compl;
+    typedef void (*CompletionFunc)(void *);
 
-    template<typename C>Completion(C* obj, void(*f)(C*obj))
-        :data(static_cast<void*>(obj))
-        ,compl(static_cast<X>(f))
+    void *parameter;
+    intptr_t completer;
+
+    template<typename C>
+    Completion(C* obj, void(*f)(C*obj))
+        :parameter(static_cast<void*>(obj))
+        ,completer(reinterpret_cast<intptr_t>(f))
     {
+    }
+
+    void evoke()
+    {
+        reinterpret_cast<CompletionFunc>(completer)(parameter);
     }
 };
 

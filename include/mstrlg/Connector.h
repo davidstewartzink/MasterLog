@@ -6,4 +6,6 @@
 namespace MasterLog {
 namespace Connector {
 
+extern int configure(Configuration const& cfg);
+
 }} // Connector : MasterLog

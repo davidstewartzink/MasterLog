@@ -5,46 +5,112 @@
 
 #include <mstrlg/Everything.h>
 
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 namespace MasterLog { namespace Network {
-static const String network("network");
-static const String listeners("listeners");
-static const String connectors("connectors");
-static const String interface("interface");
-static const String port("port");
-static const String protocol("protocol");
-static const String JSON("JSON");
-static const String TCP("TCP");
 
 static struct
 {
     int maxListeners;
-    int maxConnectors;
-} config;
+    int maxConnections;
+} config =
+{
+    100,
+    1000
+};
+
+struct Socket::I
+{
+    struct sockaddr sa;
+    int fd;
+    int mask;
+
+    void handleRead();
+    void handleWrite();
+    void markClosed();
+};
+
+struct Listener::I : Socket::I
+{
+};
+
+static const String network("network");
+static const String maxListeners("maxListeners");
+static const String maxConnections("maxConnections");
+static Socket::I * sockets;
+static int freeSocket = -1;
+static int numSockets;
+
+void Socket::I::handleRead()
+{
+}
+
+void Socket::I::handleWrite()
+{
+}
+
+void Socket::I::markClosed()
+{
+}
+
+void dropSocket(Socket::I* s)
+{
+    int i = s - sockets;
+    if (i == numSockets - 1)
+        numSockets -= 1;
+    else
+    {
+        s->fd = freeSocket;
+        freeSocket = i;
+    }
+}
+
+Socket::I* getSocket()
+{
+    if (freeSocket < 0)
+    {
+        if (numSockets == config.maxSockets)
+            return NULL;
+        return &sockets[numSockets++];
+    }
+    Socket::I* s = &sockets[freeSocket];
+    freeSocket = s->fd;
+    return s;
+}
+
+void Listener::bind(uint32_t ho, uint16_t po, int depth, void (*handler)(Socket &sock))
+{
+    Listener* thi = getListener();
+
+    union
+    {
+        struct sockaddr sa;
+        struct sockaddr_in sin;
+    } u;
+
+    ::memset(&u, 0, sizeof(u));
+
+    int fd = ::socket(PF_INET, SOCK_STREAM, 0);
+
+    u.sin.sin_len = sizeof(u.sin);
+    u.sin.sin_family = PF_INET;
+    u.sin.sin_addr.s_addr = htonl(host);
+    u.sin.sin_port = htons(port);
+
+    if (::bind(fd, &u.sa, sizeof(u.sin)))
+    {
+        ErrorLog("Failed to bind to %d.%d.%d.%d:%d", uint8_t(host >> 24), uint8_t(host >> 16), uint8_t(host >> 8), uint8_t(host), port);
+        dropListener(thi);
+    }
+}
 
 static int handleTimeout()
 {
     return -1;
 }
 
-int addListener(JSON_Config::Value const &l)
-{
-    if (!l.isObject()) return 1;
-
-/*
-  {
-     "interface":"localhost",
-        "port":4099,
-           "protocol":[
-               "JSON",
-                   "TCP"
-                      ]
-                        }
-*/
-
-    return 0;
-}
-
-int setupPollers(pollfd pfds[], int maxPfds)
+int setupPollers(Socket::I** socks, pollfd pfds[], int maxPfds)
 {
     return 0;
 }
@@ -52,17 +118,26 @@ int setupPollers(pollfd pfds[], int maxPfds)
 int run()
 {
     int r = 0;
-    const int maxPfds = config.maxListeners + config.maxConnectors;
+    const int maxPfds = config.maxListeners + config.maxConnections;
     pollfd *pfds = new pollfd[maxPfds];
+    Socket::I** socks = new Socket::I*[maxPfds];
     for (;;)
     {
-        int npfds = setupPollers(pfds, maxPfds);
         int timeo = handleTimeout();
+        int npfds = setupPollers(socks, pfds, maxPfds);
 
         int nr = ::poll(pfds, npfds, timeo);
 
-        if (nr == 0)
-            continue;
+        for (int i = 0; i < nr; ++i)
+        {
+            int m = pfds[i].revents;
+            if (m & POLLIN)
+                socks[i]->handleRead();
+            if (m & POLLOUT)
+                socks[i]->handleWrite();
+            if (m & POLLHUP)
+                socks[i]->markClosed();
+        }
         if (nr < 0)
         {
             switch(errno)
@@ -86,54 +161,22 @@ int run()
 
 int configure(Configuration const& cfg)
 {
-    JSON_Config::Value netConfig(cfg.member(network));
+    JSON_Config::Value const &netConfig(cfg.member(network));
     if (netConfig.isObject())
     {
-        config.maxListeners = 1000;
-        config.maxConnectors = 1000;
+        JSON_Config::Value tmp(netConfig.member(maxListeners));
+        if (tmp.isInteger())
+            config.maxListeners = tmp.integerValue();
+        tmp = netConfig.member(maxConnections);
+        if (tmp.isInteger())
+            config.maxConnections = tmp.integerValue();
     }
     else if (!netConfig.isNull())
     {
         Error("Invalid \"network\" configuration: Exists but not an Object");
         return 1;
     }
-
-    JSON_Config::Value lConfig(cfg.member(listeners));
-    if (lConfig.isArray())
-    {
-        int n = lConfig.count();
-        for (int i = 0; i < n; ++i)
-        {
-            int r = addListener(lConfig.element(i));
-            if (r)
-                return r;
-        }
-    }
-    else if (lConfig.isObject())
-    {
-        int r = addListener(lConfig);
-        if (r)
-            return r;
-    }
-    else if (!lConfig.isNull())
-    {
-        Error("Invalid \"listeners\" configuration: Exists but not an Object or Array");
-        return 1;
-    }
-
-    JSON_Config::Value cConfig(cfg.member(connectors));
-    if (cConfig.isArray())
-    {
-    }
-    else if (cConfig.isObject())
-    {
-    }
-    else if (!cConfig.isNull())
-    {
-        Error("Invalid \"connectors\" configuration: Exists but not an Object or Array");
-        return 1;
-    }
-
+    sockets = new Socket::I[config.maxListeners];
     return 0;
 }
 

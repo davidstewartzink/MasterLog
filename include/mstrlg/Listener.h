@@ -6,4 +6,6 @@
 namespace MasterLog {
 namespace Listener {
 
+extern int configure(Configuration const& cfg);
+
 }} // Listener : MasterLog

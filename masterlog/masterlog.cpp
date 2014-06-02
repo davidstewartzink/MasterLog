@@ -26,6 +26,15 @@ int main(int argc, char **argv)
     r = Network::configure(configuration);
     if (r) return r;
 
+    r = DNS::configure(configuration);
+    if (r) return r;
+
+    r = Listener::configure(configuration);
+    if (r) return r;
+
+    r = Connector::configure(configuration);
+    if (r) return r;
+
     return Network::run();
 }
 
